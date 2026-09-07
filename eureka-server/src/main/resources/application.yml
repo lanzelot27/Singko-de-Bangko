@@ -7,13 +7,22 @@ spring:
 
 eureka:
   instance:
+<<<<<<< HEAD
     hostname: ${EUREKA_HOSTNAME:localhost}
   client:
     # Standalone Eureka Server does not register with itself or fetch registry
+=======
+    hostname: localhost
+  client:
+>>>>>>> origin/jm-eureka-api-gateway
     register-with-eureka: false
     fetch-registry: false
     service-url:
       defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
   server:
+<<<<<<< HEAD
     # ponytail: disabled for local/demo sprint to avoid stale instances lingering in registry
     enable-self-preservation: false
+=======
+    enable-self-preservation: false
+>>>>>>> origin/jm-eureka-api-gateway
