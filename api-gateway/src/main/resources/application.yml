@@ -4,53 +4,40 @@ server:
 spring:
   application:
     name: api-gateway
-
   cloud:
     gateway:
-      # Enable service discovery-based routing via Eureka
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
-
       routes:
-        # -------------------------------------------------------
-        # AUTH SERVICE — public route (no JWT required)
-        # POST /login  →  auth-service
-        # -------------------------------------------------------
         - id: auth-service
           uri: lb://auth-service
           predicates:
             - Path=/login
-
-        # -------------------------------------------------------
-        # ACCOUNT SERVICE — protected route
-        # GET /accounts/**  →  account-service
-        # -------------------------------------------------------
         - id: account-service
           uri: lb://account-service
           predicates:
             - Path=/accounts/**
-
-        # -------------------------------------------------------
-        # TRANSACTION SERVICE — protected route
-        # POST /transactions/**  →  transaction-service
-        # -------------------------------------------------------
         - id: transaction-service
           uri: lb://transaction-service
           predicates:
             - Path=/transactions/**
 
-# Eureka client config
 eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
   instance:
     prefer-ip-address: true
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:${EUREKA_SERVER_URL:http://localhost:8761/eureka/}}
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health, info, gateway
+jwt:
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [dd.service=%X{dd.service} dd.env=%X{dd.env} dd.trace_id=%X{dd.trace_id} dd.span_id=%X{dd.span_id}] - %msg%n"
+  level:
+    com.singko: DEBUG
+    org.springframework.cloud.gateway: INFO
+
