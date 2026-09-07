@@ -40,6 +40,11 @@
       "key": "token_tampered",
       "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMDAxIiwiZW1haWwiOiJqdWFuLmRlbGFjcnV6QG5lb2JhbmsuY29tIiwiaWF0IjoxNzg4NzcwNjIyLCJleHAiOjIxMDQxMzA2MjJ9.3VuJjLWoW5gQRkOVGS1Xm9GuCp1m_ATtVIZtsAdMX9Z1",
       "type": "string"
+    },
+    {
+      "key": "token_expired",
+      "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMDAxIiwiZW1haWwiOiJqdWFuLmRlbGFjcnV6QG5lb2JhbmsuY29tIiwiaWF0IjoxNzg4NzY2MzEwLCJleHAiOjE3ODg3Njk5MTB9.G99DCX6HB0sie3okgcOKZGzJQ9mu7GxFwDH_5HVUY2Q",
+      "type": "string"
     }
   ],
   "item": [
@@ -103,6 +108,26 @@
               "path": ["accounts", "2001", "balance"]
             },
             "description": "TC-ACC-03 (Security): Request with altered cryptographic signature. Service computes HMAC-SHA256 with jwt.secret and rejects with 401 Unauthorized."
+          },
+          "response": []
+        },
+        {
+          "name": "TC-ACC-SEC-02: Expired JWT Token Rejected (Security)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{token_expired}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{account_service_url}}/accounts/2001/balance",
+              "host": ["{{account_service_url}}"],
+              "path": ["accounts", "2001", "balance"]
+            },
+            "description": "TC-ACC-SEC-02 (Security): Request with an expired JWT token (exp in past). Service validates expiry timestamp and returns 401 Unauthorized with message 'JWT token has expired'."
           },
           "response": []
         },

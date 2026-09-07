@@ -95,6 +95,29 @@ try {
 }
 
 # -------------------------------------------------------------
+# TC-ACC-SEC: Expired Token Rejected (Security)
+# -------------------------------------------------------------
+Write-Host "[TC-ACC-SEC] Expired Token Rejected (Security)..." -NoNewline
+# Token generated with past timestamp
+$expiredToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMDAxIiwiZW1haWwiOiJqdWFuLmRlbGFjcnV6QG5lb2JhbmsuY29tIiwiaWF0IjoxNzg4NzY2MzEwLCJleHAiOjE3ODg3Njk5MTB9.G99DCX6HB0sie3okgcOKZGzJQ9mu7GxFwDH_5HVUY2Q"
+$headersExpired = @{ "Authorization" = "Bearer $expiredToken"; "Content-Type" = "application/json" }
+
+try {
+    $res = Invoke-RestMethod -Uri "http://localhost:8082/accounts/2001/balance" -Method Get -Headers $headersExpired -ErrorAction Stop
+    Write-Host " FAILED (Expected 401 Unauthorized, got 200 OK)" -ForegroundColor Red
+} catch {
+    if ($_.Exception.Response.StatusCode.value__ -eq 401) {
+        Write-Host " PASSED (HTTP 401 Unauthorized correctly rejected expired token)" -ForegroundColor Green
+        $stream = $_.Exception.Response.GetResponseStream()
+        $reader = New-Object System.IO.StreamReader($stream)
+        $err = $reader.ReadToEnd() | ConvertFrom-Json
+        Write-Host "            Reason: $($err.message)" -ForegroundColor Gray
+    } else {
+        Write-Host " FAILED ($($_.Exception.Message))" -ForegroundColor Red
+    }
+}
+
+# -------------------------------------------------------------
 # TC-TXN-01: Peer-to-Peer Fund Transfer (Technical)
 # -------------------------------------------------------------
 Write-Host "[TC-TXN-01] Peer-to-Peer Fund Transfer (Technical)..." -NoNewline
