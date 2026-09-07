@@ -1,0 +1,83 @@
+# =========================
+
+# Java / Maven
+
+# =========================
+
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Maven wrapper
+
+.mvn/wrapper/maven-wrapper.properties
+
+# =========================
+
+# IntelliJ IDEA
+
+# =========================
+
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# =========================
+
+# VS Code
+
+# =========================
+
+.vscode/
+
+# =========================
+
+# Java
+
+# =========================
+
+*.class
+*.log
+
+# =========================
+
+# Spring Boot
+
+# =========================
+
+# Local configuration files
+
+application-local.properties
+application-local.yml
+application-local.yaml
+
+# =========================
+
+# Environment / Secrets
+
+# =========================
+
+.env
+.env.*
+!.env.example
+
+# =========================
+
+# OS
+
+# =========================
+
+.DS_Store
+Thumbs.db
+
+# =========================
+
+# Temporary files
+
+# =========================
+
+*.tmp
+*.temp
+*.swp
+*.swo
