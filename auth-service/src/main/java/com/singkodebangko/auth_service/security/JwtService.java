@@ -33,10 +33,10 @@ public class JwtService {
         );
 
         return Jwts.builder()
-                .subject(String.valueOf(userId))
+                .setSubject(String.valueOf(userId))
                 .claim("email", email)
-                .issuedAt(issuedAt)
-                .expiration(expirationDate)
+                .setIssuedAt(issuedAt)
+                .setExpiration(expirationDate)
                 .signWith(signingKey)
                 .compact();
     }
