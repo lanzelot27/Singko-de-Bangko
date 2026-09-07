@@ -3,24 +3,19 @@ server:
 
 spring:
   application:
-    name: eureka-server
+    name: EUREKA-SERVER
 
 eureka:
   instance:
-    hostname: localhost
+    hostname: ${EUREKA_HOSTNAME:localhost}
   client:
-    # This is the server itself — it should NOT register with itself
     register-with-eureka: false
     fetch-registry: false
     service-url:
       defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
   server:
-    # Wait time before evicting unresponsive instances (lower for dev)
-    wait-time-in-ms-when-sync-empty: 0
     enable-self-preservation: false
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health, info
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [dd.service=%X{dd.service} dd.env=%X{dd.env} dd.trace_id=%X{dd.trace_id} dd.span_id=%X{dd.span_id}] - %msg%n"
