@@ -81,3 +81,29 @@ Thumbs.db
 *.temp
 *.swp
 *.swo
+# Build output & compiled binaries (contains the fat JARs and dependencies)
+target/
+build/
+bin/
+out/
+*.jar
+*.war
+
+# Local dependency caches & wrapper binaries
+.gradle/
+.m2/
+!gradle/wrapper/gradle-wrapper.jar
+!mvnw
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE configuration files
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS temporary files
+.DS_Store
+Thumbs.db
