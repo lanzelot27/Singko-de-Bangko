@@ -1,12 +1,20 @@
-<<<<<<< HEAD
-# Maven build outputs
+# =========================
+# Java / Maven build outputs
+# =========================
 **/target/
 target/
 *.class
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties
 
+# =========================
 # IDE and Editor files
+# =========================
 .idea/
 *.iml
+*.iws
+*.ipr
+out/
 .vscode/
 .settings/
 .project
@@ -17,94 +25,31 @@ target/
 *.njsproj
 *.sln
 
-# OS metadata
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-=======
 # =========================
-
-# Java / Maven
-
+# Spring Boot local configs
 # =========================
-
-target/
-!.mvn/wrapper/maven-wrapper.jar
-
-# Maven wrapper
-
-.mvn/wrapper/maven-wrapper.properties
-
-# =========================
-
-# IntelliJ IDEA
-
-# =========================
-
-.idea/
-*.iml
-*.iws
-*.ipr
-out/
-
-# =========================
-
-# VS Code
-
-# =========================
-
-.vscode/
-
-# =========================
-
-# Java
-
-# =========================
-
-*.class
-*.log
-
-# =========================
-
-# Spring Boot
-
-# =========================
-
-# Local configuration files
-
 application-local.properties
 application-local.yml
 application-local.yaml
 
 # =========================
-
 # Environment / Secrets
-
 # =========================
-
 .env
 .env.*
 !.env.example
 
 # =========================
-
-# OS
-
+# OS metadata
 # =========================
-
 .DS_Store
 Thumbs.db
 
 # =========================
-
-# Temporary files
-
+# Logs and Temporary files
 # =========================
-
+*.log
 *.tmp
 *.temp
 *.swp
 *.swo
->>>>>>> origin/jm-eureka-api-gateway

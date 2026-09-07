@@ -8,6 +8,7 @@ import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -26,6 +27,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private static final List<String> PUBLIC_PATHS = List.of(
             "/login",
+            "/auth",
             "/eureka",
             "/actuator"
     );
@@ -39,11 +41,23 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
-        // Allow public paths without authentication
-        if (isPublicPath(path)) {
+        // 1. Allow CORS preflight requests without authentication
+        if (exchange.getRequest().getMethod() == HttpMethod.OPTIONS) {
             return chain.filter(exchange);
         }
 
+        // 2. Allow public paths without authentication (strip spoofed headers)
+        if (isPublicPath(path)) {
+            ServerHttpRequest cleanRequest = exchange.getRequest().mutate()
+                    .headers(headers -> {
+                        headers.remove("X-User-Id");
+                        headers.remove("X-User-Email");
+                    })
+                    .build();
+            return chain.filter(exchange.mutate().request(cleanRequest).build());
+        }
+
+        // 3. Validate Authorization header on secured routes
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return onError(exchange, HttpStatus.UNAUTHORIZED, "Missing or invalid authorization header");
@@ -53,9 +67,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         try {
             JwtValidator.Claims claims = jwtValidator.validateAndExtract(token);
 
+            // 4. Inject verified user context downstream
             ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                    .header("X-User-Id", claims.userId())
-                    .header("X-User-Email", claims.email())
+                    .headers(headers -> {
+                        headers.set("X-User-Id", claims.userId());
+                        headers.set("X-User-Email", claims.email());
+                    })
                     .build();
 
             return chain.filter(exchange.mutate().request(mutatedRequest).build());

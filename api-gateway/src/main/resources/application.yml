@@ -22,42 +22,25 @@ spring:
               - OPTIONS
             allowedHeaders: "*"
       routes:
-        # Auth Service public login route per contracts.md (with /auth/** fallback)
         - id: auth-service
           uri: lb://AUTH-SERVICE
           predicates:
             - Path=/login, /login/**, /auth/**
-        # Account Service secured routes
-      routes:
-        - id: auth-service
-          uri: lb://AUTH-SERVICE
-          predicates:
-            - Path=/login
         - id: account-service
           uri: lb://ACCOUNT-SERVICE
           predicates:
             - Path=/accounts/**
-        # Transaction Service secured routes
         - id: transaction-service
           uri: lb://TRANSACTION-SERVICE
           predicates:
             - Path=/transactions/**
 
 eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
   instance:
     prefer-ip-address: true
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}}
 
-# JWT configuration per project requirement
 jwt:
   secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-  instance:
-    prefer-ip-address: true
-  client:
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
-
-jwt:
-  secret: ${JWT_SECRET:singko-de-bangko-super-secure-jwt-secret-key-2026}
