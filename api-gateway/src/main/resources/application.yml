@@ -16,36 +16,30 @@ spring:
       routes:
         # -------------------------------------------------------
         # AUTH SERVICE — public route (no JWT required)
-        # POST /api/auth/login  →  auth-service
+        # POST /login  →  auth-service
         # -------------------------------------------------------
         - id: auth-service
           uri: lb://auth-service
           predicates:
-            - Path=/api/auth/**
-          filters:
-            - StripPrefix=1
+            - Path=/login
 
         # -------------------------------------------------------
         # ACCOUNT SERVICE — protected route
-        # GET /api/accounts/**  →  account-service
+        # GET /accounts/**  →  account-service
         # -------------------------------------------------------
         - id: account-service
           uri: lb://account-service
           predicates:
-            - Path=/api/accounts/**
-          filters:
-            - StripPrefix=1
+            - Path=/accounts/**
 
         # -------------------------------------------------------
         # TRANSACTION SERVICE — protected route
-        # POST /api/transactions/**  →  transaction-service
+        # POST /transactions/**  →  transaction-service
         # -------------------------------------------------------
         - id: transaction-service
           uri: lb://transaction-service
           predicates:
-            - Path=/api/transactions/**
-          filters:
-            - StripPrefix=1
+            - Path=/transactions/**
 
 # Eureka client config
 eureka:
