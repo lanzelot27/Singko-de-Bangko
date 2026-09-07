@@ -1,0 +1,56 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      # Enable service discovery-based routing via Eureka
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      routes:
+        # -------------------------------------------------------
+        # AUTH SERVICE — public route (no JWT required)
+        # POST /login  →  auth-service
+        # -------------------------------------------------------
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/login
+
+        # -------------------------------------------------------
+        # ACCOUNT SERVICE — protected route
+        # GET /accounts/**  →  account-service
+        # -------------------------------------------------------
+        - id: account-service
+          uri: lb://account-service
+          predicates:
+            - Path=/accounts/**
+
+        # -------------------------------------------------------
+        # TRANSACTION SERVICE — protected route
+        # POST /transactions/**  →  transaction-service
+        # -------------------------------------------------------
+        - id: transaction-service
+          uri: lb://transaction-service
+          predicates:
+            - Path=/transactions/**
+
+# Eureka client config
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway
