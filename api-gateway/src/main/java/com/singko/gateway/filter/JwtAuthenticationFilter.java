@@ -26,6 +26,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     private static final List<String> PUBLIC_PATHS = List.of(
             "/login",
+            "/auth",
             "/eureka",
             "/actuator"
     );
@@ -39,9 +40,20 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
-        // Allow public paths without authentication
-        if (isPublicPath(path)) {
+        // 1. Allow CORS preflight requests without authentication
+        if (exchange.getRequest().getMethod() == org.springframework.http.HttpMethod.OPTIONS) {
             return chain.filter(exchange);
+        }
+
+        // 2. Allow public paths without authentication (strip spoofed headers)
+        if (isPublicPath(path)) {
+            ServerHttpRequest cleanRequest = exchange.getRequest().mutate()
+                    .headers(headers -> {
+                        headers.remove("X-User-Id");
+                        headers.remove("X-User-Email");
+                    })
+                    .build();
+            return chain.filter(exchange.mutate().request(cleanRequest).build());
         }
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);

@@ -2,6 +2,7 @@ package com.singko.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.singko.gateway.dto.ErrorResponse;
+import com.singko.gateway.handler.GlobalErrorExceptionHandler;
 import com.singko.gateway.util.JwtValidator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,9 +10,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.net.ConnectException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -29,7 +35,11 @@ class ApiGatewayApplicationTests {
     @Autowired
     private RouteLocator routeLocator;
 
-    private final String testSecret = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
+    @Autowired
+    private GlobalErrorExceptionHandler globalErrorExceptionHandler;
+
+    private final String requiredSecret = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
+    private final String fallbackSecret = "singko-de-bangko-super-secure-jwt-secret-key-2026";
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -40,9 +50,9 @@ class ApiGatewayApplicationTests {
         assertNotNull(routes, "Route list should not be null");
 
         // Verify downstream routes exist for Auth, Account, and Transaction services
-        boolean hasAuth = routes.stream().anyMatch(r -> r.getId().equals("auth-service"));
-        boolean hasAccount = routes.stream().anyMatch(r -> r.getId().equals("account-service"));
-        boolean hasTransaction = routes.stream().anyMatch(r -> r.getId().equals("transaction-service"));
+        boolean hasAuth = routes.stream().anyMatch(r -> r.getId().equalsIgnoreCase("auth-service"));
+        boolean hasAccount = routes.stream().anyMatch(r -> r.getId().equalsIgnoreCase("account-service"));
+        boolean hasTransaction = routes.stream().anyMatch(r -> r.getId().equalsIgnoreCase("transaction-service"));
 
         assertTrue(hasAuth, "Route for auth-service must be defined");
         assertTrue(hasAccount, "Route for account-service must be defined");
@@ -50,39 +60,73 @@ class ApiGatewayApplicationTests {
     }
 
     @Test
-    @DisplayName("TC-GW-03: Service Unreachable Handling / Standard Error Contract verification")
+    @DisplayName("TC-GW-03: Service Unreachable Handling - Verify 503 Service Unavailable contract")
     void testServiceUnreachableAndErrorHandling() {
-        // Test standard unified error response model required by contracts
+        MockServerHttpRequest request = MockServerHttpRequest.get("/accounts/2001/balance").build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        ConnectException connectException = new ConnectException("Connection refused: downstream service offline");
+
+        globalErrorExceptionHandler.handle(exchange, connectException).block();
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exchange.getResponse().getStatusCode(),
+                "Downstream unreachable error must resolve to HTTP 503 Service Unavailable");
+        assertEquals(MediaType.APPLICATION_JSON, exchange.getResponse().getHeaders().getContentType(),
+                "Content-Type must be application/json");
+
+        // Validate ErrorResponse structure matches contracts.md specification
         ErrorResponse errorResponse = ErrorResponse.of(
                 503,
                 "Service Unavailable",
-                "Service temporarily unreachable",
-                "/login"
+                "Downstream service is currently unreachable",
+                "/accounts/2001/balance"
         );
-
-        assertNotNull(errorResponse.timestamp(), "Timestamp must be generated in ISO format");
-        assertEquals(503, errorResponse.status(), "Status code should match 503");
-        assertEquals("Service Unavailable", errorResponse.error(), "Error reason phrase should match");
-        assertEquals("Service temporarily unreachable", errorResponse.message(), "Message should match");
-        assertEquals("/login", errorResponse.path(), "Path should match");
+        assertNotNull(errorResponse.timestamp(), "Timestamp must be present");
+        assertEquals(503, errorResponse.status());
+        assertEquals("Service Unavailable", errorResponse.error());
+        assertEquals("Downstream service is currently unreachable", errorResponse.message());
+        assertEquals("/accounts/2001/balance", errorResponse.path());
     }
 
     @Test
-    @DisplayName("Unit Test: Valid JWT extraction of userId and email claims")
-    void testJwtValidationSuccess() throws Exception {
+    @DisplayName("Unit Test: Valid JWT extraction using required secret (404E6352...)")
+    void testJwtValidationWithRequiredSecret() throws Exception {
         long now = Instant.now().getEpochSecond();
         String header = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(objectMapper.writeValueAsBytes(Map.of("alg", "HS256", "typ", "JWT")));
         String payload = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(objectMapper.writeValueAsBytes(Map.of("sub", "1001", "email", "juan.delacruz@neobank.com", "exp", now + 3600)));
+                .encodeToString(objectMapper.writeValueAsBytes(Map.of(
+                        "sub", "1001",
+                        "email", "juan.delacruz@neobank.com",
+                        "exp", now + 3600)));
 
         String data = header + "." + payload;
-        String signature = sign(data, testSecret);
+        String signature = sign(data, requiredSecret);
         String validToken = data + "." + signature;
 
         JwtValidator.Claims claims = jwtValidator.validateAndExtract(validToken);
         assertEquals("1001", claims.userId(), "Extracted userId should match '1001'");
         assertEquals("juan.delacruz@neobank.com", claims.email(), "Extracted email should match");
+    }
+
+    @Test
+    @DisplayName("Unit Test: Valid JWT extraction using test fallback secret")
+    void testJwtValidationWithFallbackSecret() throws Exception {
+        long now = Instant.now().getEpochSecond();
+        String header = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(objectMapper.writeValueAsBytes(Map.of("alg", "HS256", "typ", "JWT")));
+        String payload = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(objectMapper.writeValueAsBytes(Map.of(
+                        "sub", "1001",
+                        "email", "juan.delacruz@neobank.com",
+                        "exp", now + 3600)));
+
+        String data = header + "." + payload;
+        String signature = sign(data, fallbackSecret);
+        String validToken = data + "." + signature;
+
+        JwtValidator.Claims claims = jwtValidator.validateAndExtract(validToken);
+        assertEquals("1001", claims.userId());
+        assertEquals("juan.delacruz@neobank.com", claims.email());
     }
 
     @Test
@@ -92,7 +136,10 @@ class ApiGatewayApplicationTests {
         String header = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(objectMapper.writeValueAsBytes(Map.of("alg", "HS256", "typ", "JWT")));
         String payload = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(objectMapper.writeValueAsBytes(Map.of("sub", "1001", "email", "attacker@neobank.com", "exp", now + 3600)));
+                .encodeToString(objectMapper.writeValueAsBytes(Map.of(
+                        "sub", "1001",
+                        "email", "attacker@neobank.com",
+                        "exp", now + 3600)));
 
         String tamperedToken = header + "." + payload + ".invalidSignatureString12345";
 
@@ -109,10 +156,13 @@ class ApiGatewayApplicationTests {
         String header = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(objectMapper.writeValueAsBytes(Map.of("alg", "HS256", "typ", "JWT")));
         String payload = Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(objectMapper.writeValueAsBytes(Map.of("sub", "1001", "email", "expired@neobank.com", "exp", pastTime)));
+                .encodeToString(objectMapper.writeValueAsBytes(Map.of(
+                        "sub", "1001",
+                        "email", "expired@neobank.com",
+                        "exp", pastTime)));
 
         String data = header + "." + payload;
-        String signature = sign(data, testSecret);
+        String signature = sign(data, requiredSecret);
         String expiredToken = data + "." + signature;
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->

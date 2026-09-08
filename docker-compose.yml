@@ -1,0 +1,126 @@
+services:
+  datadog-agent:
+    image: gcr.io/datadoghq/agent:7
+    container_name: datadog-agent
+    environment:
+      - DD_API_KEY=${DD_API_KEY}
+      - DD_SITE=datadoghq.com
+      - DD_APM_ENABLED=true
+      - DD_APM_NON_LOCAL_TRAFFIC=true
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_APM_ANALYZED_SPANS="api-gateway|netty.request=1,api-gateway|spring.cloud.gateway.route=1,account-service|servlet.request=1,auth-service|servlet.request=1,transaction-service|servlet.request=1"
+      - DD_CONTAINER_EXCLUDE="name:datadog-agent"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8126:8126/tcp"
+    networks:
+      - bank-net
+
+  eureka-server:
+    image: eclipse-temurin:17-jre-alpine
+    container_name: eureka-server
+    working_dir: /app
+    command: ["java", "-jar", "app.jar"]
+    ports:
+      - "8761:8761"
+    volumes:
+      - ./eureka-server/target/eureka-server-0.0.1-SNAPSHOT.jar:/app/app.jar:ro
+      - ./dd-java-agent.jar:/app/dd-java-agent.jar:ro
+    environment:
+      - EUREKA_HOSTNAME=eureka-server
+      - SPRING_APPLICATION_NAME=EUREKA-SERVER
+      - JAVA_TOOL_OPTIONS=-javaagent:/app/dd-java-agent.jar -Ddd.agent.host=datadog-agent -Ddd.trace.agent.port=8126 -Ddd.logs.injection=true -Ddd.env=dev -Ddd.service=eureka-server -Ddd.version=1.0.0
+    depends_on:
+      - datadog-agent
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "java", "service": "eureka-server"}]'
+    networks:
+      - bank-net
+
+  auth-service:
+    image: sinko-auth-service
+    container_name: auth-service
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./dd-java-agent.jar:/app/dd-java-agent.jar:ro
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=singko-de-bangko-super-secure-jwt-secret-key-2026
+      - JAVA_TOOL_OPTIONS=-javaagent:/app/dd-java-agent.jar -Ddd.agent.host=datadog-agent -Ddd.trace.agent.port=8126 -Ddd.logs.injection=true -Ddd.trace.analytics.enabled=true -Ddd.trace.sample.rate=1.0 -Ddd.env=dev -Ddd.service=auth-service -Ddd.version=1.0.0
+    depends_on:
+      - datadog-agent
+      - eureka-server
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "java", "service": "auth-service"}]'
+    networks:
+      - bank-net
+
+  account-service:
+    image: sinko-account-service
+    container_name: account-service
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./dd-java-agent.jar:/app/dd-java-agent.jar:ro
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JAVA_TOOL_OPTIONS=-javaagent:/app/dd-java-agent.jar -Ddd.agent.host=datadog-agent -Ddd.trace.agent.port=8126 -Ddd.logs.injection=true -Ddd.trace.analytics.enabled=true -Ddd.trace.sample.rate=1.0 -Ddd.env=dev -Ddd.service=account-service -Ddd.version=1.0.0
+    depends_on:
+      - datadog-agent
+      - eureka-server
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "java", "service": "account-service"}]'
+    networks:
+      - bank-net
+
+  transaction-service:
+    image: sinko-transaction-service
+    container_name: transaction-service
+    ports:
+      - "8083:8083"
+    volumes:
+      - ./dd-java-agent.jar:/app/dd-java-agent.jar:ro
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - ACCOUNT_SERVICE_URL=http://ACCOUNT-SERVICE
+      - JAVA_TOOL_OPTIONS=-javaagent:/app/dd-java-agent.jar -Ddd.agent.host=datadog-agent -Ddd.trace.agent.port=8126 -Ddd.logs.injection=true -Ddd.trace.analytics.enabled=true -Ddd.trace.sample.rate=1.0 -Ddd.env=dev -Ddd.service=transaction-service -Ddd.version=1.0.0
+    depends_on:
+      - datadog-agent
+      - eureka-server
+      - account-service
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "java", "service": "transaction-service"}]'
+    networks:
+      - bank-net
+
+  api-gateway:
+    image: eclipse-temurin:17-jre-alpine
+    container_name: api-gateway
+    working_dir: /app
+    command: ["java", "-jar", "app.jar"]
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./api-gateway/target/api-gateway-0.0.1-SNAPSHOT.jar:/app/app.jar:ro
+      - ./dd-java-agent.jar:/app/dd-java-agent.jar:ro
+    environment:
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - JWT_SECRET=singko-de-bangko-super-secure-jwt-secret-key-2026
+      - JAVA_TOOL_OPTIONS=-javaagent:/app/dd-java-agent.jar -Ddd.agent.host=datadog-agent -Ddd.trace.agent.port=8126 -Ddd.logs.injection=true -Ddd.trace.analytics.enabled=true -Ddd.trace.sample.rate=1.0 -Ddd.env=dev -Ddd.service=api-gateway -Ddd.version=1.0.0
+    depends_on:
+      - datadog-agent
+      - eureka-server
+      - auth-service
+      - account-service
+      - transaction-service
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "java", "service": "api-gateway"}]'
+    networks:
+      - bank-net
+
+networks:
+  bank-net:
+    driver: bridge
