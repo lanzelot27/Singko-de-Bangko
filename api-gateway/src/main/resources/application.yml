@@ -10,11 +10,22 @@ spring:
         locator:
           enabled: true
           lower-case-service-id: true
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
       routes:
         - id: auth-service
           uri: lb://auth-service
           predicates:
-            - Path=/login
+            - Path=/login, /login/**, /auth/**
         - id: account-service
           uri: lb://account-service
           predicates:
